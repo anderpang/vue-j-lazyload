@@ -3,8 +3,7 @@ function lazyload(component,opts){
         lazy=new Lazy(opts);    
     addEvent(component,"mounted",function(){
          var lazy_ctx=lazy._opts.context;
-         
-         lazy._opts._context=typeof lazy_ctx==="string"?this.$refs[lazy_ctx]:lazy._opts.content;         
+         lazy._opts._context=typeof lazy_ctx==="string"?this.$refs[lazy_ctx]:lazy._opts.context;         
          lazy._toggleScroll(true);
     });
     addEvent(component,"destroyed",function(){
@@ -147,6 +146,10 @@ Lazy.prototype={
     },
     _toggleScroll(bl){
         this._opts._context[bl?"addEventListener":"removeEventListener"]("scroll",this._scroll,false);
+        if(!bl){
+            this._opts._context=null;
+            this._listeners.length=0;
+        }
     }
 }
 

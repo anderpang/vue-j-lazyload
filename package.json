@@ -1,6 +1,6 @@
 {
   "name": "vue-j-lazyload",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "vue2.X高性能图片懒加载插件",
   "main": "vue-j-lazyload.js",
   "scripts": {
