@@ -1,0 +1,19 @@
+{
+  "name": "vue-j-lazyload",
+  "version": "1.0.0",
+  "description": "vue2.X高性能图片懒加载插件",
+  "main": "vue-j-lazyload.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/anderpang/vue-j-lazyload.git"
+  },
+  "author": "AnderPang <anderpang@foxmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/anderpang/vue-j-lazyload/issues"
+  },
+  "homepage": "https://github.com/anderpang/vue-j-lazyload#readme"
+}
