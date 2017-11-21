@@ -1,157 +1,147 @@
-function lazyload(component,opts){
-    var directives=component.directives||(component.directives={}),
-        lazy=new Lazy(opts);    
-    addEvent(component,"mounted",function(){
-         var lazy_ctx=lazy._opts.context;
-         lazy._opts._context=typeof lazy_ctx==="string"?this.$refs[lazy_ctx]:lazy._opts.context;         
-         lazy._toggleScroll(true);
-    });
-    addEvent(component,"destroyed",function(){
-         lazy._toggleScroll(false);
-    });
+/**
+ * 图片懒加载，先Vue.use，需v-use-lazy。
+ * @param {Boolean} v-use-lazy懒加载开关。 若为true，滚动对象为window，否则为当前元素 
+ * @param {String} v-lazy 图片地址
+ */
 
-    directives.lazy=lazy;
-
-    return component;
-}
-
-function addEvent(component,hook,fn){
-     var oFn=component[hook],tf=typeof oFn;
-     switch(tf){
-         case "function":
-          component[hook]=[oFn,fn];
-         break;
-         case "object":
-          component[hook].push(fn);
-          break;
-         default:
-           component[hook]=fn;
-         break;
-     }
-}
-
-function Lazy(opts){
-   var defaultOpts={
-            bg:true,
-            timeout:100,
-            loading:null, 
-            error:null,
-            context:window
-       },k;
-       
-   for(k in opts){
-       defaultOpts[k]=opts[k];
-   }
-
-   this.height=window.innerHeight;
-   this._timestamp=0;
-
-   this._listeners=[];
-   this._opts=defaultOpts;
-
-   this._scroll=this._scroll.bind(this);
-}
-
-Lazy.prototype={
-    inserted(el,binding){   
-       var _this=binding.def,
-           loading=_this._opts.loading;
-
-       if(loading){
-          _this._opts.bg?el.style.backgroundImage="url('"+loading+"')":el.src=loading;
-       }
-       if(_this._checkInView(el,binding.value)){
-           return;
-       }
-
-       _this._listeners.push({
-           el:el,        
-           src:binding.value
-       });
-    },
-   update(el,binding){
-      if(binding.value===binding.oldValue)return;
-
-       var _this=binding.def,
-           ls=_this._listeners,
-           i=ls.length,
-           has=false;
-        while(i--){
-            if(ls[i].el===el){
-                ls[i].src=binding.value;
-                has=true;
-                break;
-            }
-        }
-
-        has||_this.inserted(el,binding);
-    },
-    
-    unbind(el,binding){
-       var ls=binding.def._listeners,
-           i=ls.length;
-        while(i--){
-            if(ls[i].el===el){
-                ls.splice(i,1);
-                break;
-            }
+var lazyload={
+    _listeners:[],
+    _context:null,
+    _is_use:false,
+    bg:true,
+    timeout:100,
+    loading:null, 
+    error:null,
+    _toggleScroll(bl){
+        this._is_use=bl;
+        this._context[bl?"addEventListener":"removeEventListener"]("scroll",this._scroll,false);
+        if(!bl){
+            this._context=null;
+            this._listeners.length=0;
         }
     },
     _checkInView(el,src){
-       var bound=el.getBoundingClientRect();
-       if(bound.bottom>0&&bound.top<this.height){           
-           this._loadImg(el,src);
-           return true;
-       }
-       return false;
+        var bound=el.getBoundingClientRect();
+        if(bound.bottom>0&&bound.top<this.height){           
+            this._loadImg(el,src);
+            return true;
+        }
+        return false;
+     },
+     _loadImg(el,src){
+         var img=new Image(),
+             bg=this.bg,
+             err=this.error;
+ 
+         img.onload=function(){
+             bg?el.style.backgroundImage="url('"+src+"')":el.src=src;
+         };
+ 
+         if(err){
+             img.onerror=function(){
+                bg?el.style.backgroundImage="url('"+this.err+"')":el.src=this.err;
+             };
+         }
+ 
+         img.src=src;
+     },
+     _scroll(e){
+         var timestamp=e&&e.timeStamp||Date.now(),
+             timeout=this.timeout;
+          clearTimeout(this._timer);
+ 
+         if(timestamp-this._timestamp>timeout)
+         {        
+             var ls=this._listeners,
+             i=ls.length;
+ 
+             while(i--){
+                 if(this._checkInView(ls[i].el,ls[i].src)){
+                     ls.splice(i,1);
+                 }
+             }
+         }
+         else
+         {
+           this._timer=setTimeout(this._scroll,timeout);
+         }
+         this._timestamp=timestamp;
     },
-    _loadImg(el,src){
-        var img=new Image(),
-            opts=this._opts,
-            bg=opts.bg;
+    install(Vue,options){
+        if(this.installed)return;        
+        var _this=this;
+        this.installed=true;
+        
+        options=options||{};
+        options.bg===false&&(this.bg=false);
+        this.timeout=options.timeout||this.timeout;
+        this.loading=options.loading||this.loading;
+        this.error=options.error||this.error;
 
-        img.onload=function(){
-            bg?el.style.backgroundImage="url('"+src+"')":el.src=src;
-        };
+        this.height=window.innerHeight;
+        this._scroll=this._scroll.bind(this);
 
-        if(opts.error){
-            img.onerror=function(){
-               bg?el.style.backgroundImage="url('"+opts.error+"')":el.src=opts.error;
-            };
+        function bind(el,binding){ 
+            if(_this._is_use)return;  
+            _this._context=binding.value?window:el;            
+            _this._toggleScroll(true);
         }
 
-        img.src=src;
-    },
-    _scroll(e){
-        var timestamp=e&&e.timeStamp||Date.now(),
-            timeout=this._opts.timeout;
-         clearTimeout(this._timer);
+        Vue.directive("use-lazy",{
+            inserted:bind,
+            update:bind,             
+             unbind(){
+                _this._toggleScroll(false);
+             }
+        });
 
-        if(timestamp-this._timestamp>timeout)
-        {        
-            var ls=this._listeners,
-            i=ls.length;
 
-            while(i--){
-                if(this._checkInView(ls[i].el,ls[i].src)){
-                    ls.splice(i,1);
+        Vue.directive("lazy",{
+            inserted(el,binding){   
+               var loading=_this.loading;
+
+               if(loading){
+                  _this.bg?el.style.backgroundImage="url('"+loading+"')":el.src=loading;
+               }
+               if(_this._checkInView(el,binding.value)){
+                   return;
+               }
+        
+               _this._listeners.push({
+                   el:el,        
+                   src:binding.value
+               });
+            },
+           update(el,binding){
+              if(binding.value===binding.oldValue)return;
+        
+               var ls=_this._listeners,
+                   i=ls.length,
+                   has=false;
+                while(i--){
+                    if(ls[i].el===el){
+                        ls[i].src=binding.value;
+                        has=true;
+                        break;
+                    }
+                }
+        
+                has||_this.inserted(el,binding);
+            },
+            
+            unbind(el,binding){
+               var ls=_this._listeners,
+                   i=ls.length;
+                while(i--){
+                    if(ls[i].el===el){
+                        ls.splice(i,1);
+                        break;
+                    }
                 }
             }
-        }
-        else
-        {
-          this._timer=setTimeout(this._scroll,timeout);
-        }
-        this._timestamp=timestamp;
-    },
-    _toggleScroll(bl){
-        this._opts._context[bl?"addEventListener":"removeEventListener"]("scroll",this._scroll,false);
-        if(!bl){
-            this._opts._context=null;
-            this._listeners.length=0;
-        }
-    }
-}
+        });
 
+    }
+};
 
 export default lazyload;

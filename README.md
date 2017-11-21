@@ -1,6 +1,8 @@
 # vue-j-lazyload
 
-vue2.X 高性能图片懒加载插件
+vue2.X 高性能图片懒加载插件。
+
+进入时绑定onscroll，退出时解绑onscroll，不会所有页面都带有onscroll事件。
 
 ## npm
 
@@ -11,17 +13,27 @@ $ npm install vue-j-lazyload
 ```
 
 # Usage
+main.js
+```javascript
+import Vue from "vue";
+import lazyload from "vue-j-lazyload";
+
+Vue.use(lazyload,{
+  loading:"http://img.zcool.cn/community/012c0258d8bb35a801219c77694def.gif", //可选 
+});
+
+```
 
 List.js
 ```html
-  <ul ref="el" class="pic-list">    
+  <ul class="pic-list" v-use-lazy>    
     <li class="item" v-for="(item,i) in list" :key="i" v-lazy="item.url" :title="item.who"></li>
   </ul>
 ```
 ```javascript
-import lazyload from "vue-j-lazyload";
 
-export default lazyload({
+
+export default {
   name: 'list',
   data () {
     return {
@@ -35,13 +47,7 @@ export default lazyload({
         this.list.push(...j.results);  
     }.bind(this));
   },
-},
-//lazyload配置，可选
-{
-  loading:"http://img.zcool.cn/community/012c0258d8bb35a801219c77694def.gif", //可选 
-  error:"",     //可选，图片加载失败时要显示的图片
-  context:"el"  //可选,滚动容器，默认window  
-});
+};
 
 ```
 ```html
